@@ -1,8 +1,12 @@
 import Link from "next/link";
-import { ShoppingBag, User, Search, Menu } from "lucide-react";
+import { ShoppingBag, User, Search, Menu, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getProfile } from "@/services/auth";
 
-export function Navbar() {
+export async function Navbar() {
+    const profile = await getProfile();
+    const isAdmin = profile?.role === "admin";
+
     return (
         <nav className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md">
             <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -14,12 +18,12 @@ export function Navbar() {
                         <Link href="/shop" className="text-sm font-medium text-gray-600 hover:text-black">
                             Shop All
                         </Link>
-                        <Link href="/categories" className="text-sm font-medium text-gray-600 hover:text-black">
-                            Categories
-                        </Link>
-                        <Link href="/collections" className="text-sm font-medium text-gray-600 hover:text-black">
-                            Collections
-                        </Link>
+                        {isAdmin && (
+                            <Link href="/admin" className="flex items-center gap-1.5 text-sm font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full transition-colors">
+                                <ShieldCheck className="w-4 h-4" />
+                                Admin Panel
+                            </Link>
+                        )}
                     </div>
                 </div>
 

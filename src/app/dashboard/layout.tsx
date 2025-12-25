@@ -7,7 +7,8 @@ import {
     Heart,
     MapPin,
     LogOut,
-    ChevronRight
+    ChevronRight,
+    ShieldCheck
 } from "lucide-react";
 
 export default async function CustomerDashboardLayout({
@@ -52,6 +53,19 @@ export default async function CustomerDashboardLayout({
                                 <ChevronRight className="w-4 h-4 opacity-50" />
                             </Link>
                         ))}
+
+                        {profile?.role === "admin" && (
+                            <Link
+                                href="/admin"
+                                className="flex items-center justify-between px-4 py-3 text-sm font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-all mt-6"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <ShieldCheck className="w-5 h-5" />
+                                    Admin Panel
+                                </div>
+                                <ChevronRight className="w-4 h-4" />
+                            </Link>
+                        )}
 
                         <form action={async () => {
                             "use server";

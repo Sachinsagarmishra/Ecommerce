@@ -4,7 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
-async function getOrSetSessionId() {
+async function getSessionId() {
+    const cookieStore = await cookies();
+    return cookieStore.get("cart_session_id")?.value;
+}
+
+async function setSessionId() {
     const cookieStore = await cookies();
     let sessionId = cookieStore.get("cart_session_id")?.value;
 
@@ -18,14 +23,15 @@ async function getOrSetSessionId() {
             maxAge: 60 * 60 * 24 * 30 // 30 days
         });
     }
-
     return sessionId;
 }
 
 export async function getCart() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const sessionId = await getOrSetSessionId();
+    const sessionId = await getSessionId();
+
+    if (!user && !sessionId) return null;
 
     let query = supabase
         .from("carts")
@@ -53,47 +59,38 @@ export async function getCart() {
 
     const { data: cart } = await query.maybeSingle();
 
-    if (!cart) {
-        // Create cart if doesn't exist
-        const insertData = user
-            ? { user_id: user.id }
-            : { session_id: sessionId };
-
-        const { data: newCart } = await supabase
-            .from("carts")
-            .insert(insertData)
-            .select(`
-                id,
-                cart_items (
-                    id,
-                    quantity,
-                    product:products (
-                        id,
-                        name,
-                        slug,
-                        price,
-                        discounted_price,
-                        product_images(url)
-                    )
-                )
-            `)
-            .single();
-        return newCart;
-    }
-
+    // Do NOT auto-create cart on GET to avoid cookie issues during render
     return cart;
 }
 
 export async function addToCart(productId: string, quantity: number = 1) {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // During an ACTION, it's safe to set session cookies
+    const sessionId = user ? null : await setSessionId();
+
     let cart = await getCart();
 
-    if (!cart) return { error: "Failed to initialize cart" };
+    if (!cart) {
+        const insertData = user
+            ? { user_id: user.id }
+            : { session_id: sessionId };
+
+        const { data: newCart, error: cartError } = await supabase
+            .from("carts")
+            .insert(insertData)
+            .select()
+            .single();
+
+        if (cartError) return { error: cartError.message };
+        cart = newCart;
+    }
 
     const { data: existingItem } = await supabase
         .from("cart_items")
         .select()
-        .eq("cart_id", cart.id)
+        .eq("cart_id", cart!.id)
         .eq("product_id", productId)
         .maybeSingle();
 

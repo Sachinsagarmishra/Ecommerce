@@ -15,7 +15,7 @@ export async function Navbar() {
                         STØRE
                     </Link>
                     <div className="hidden items-center gap-6 md:flex">
-                        <Link href="/shop" className="text-sm font-medium text-gray-600 hover:text-black">
+                        <Link href="/products" className="text-sm font-medium text-gray-600 hover:text-black">
                             Shop All
                         </Link>
                         {isAdmin && (

@@ -1,157 +1,113 @@
-"use client";
+import { getCart } from "@/features/cart/actions";
+import { getProfile } from "@/services/auth";
+import { CheckoutClient } from "./CheckoutClient";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { ChevronLeft, MapPin } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import Image from "next/image";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { createRazorpayOrder } from "@/services/payments";
-import { toast } from "sonner";
-import Script from "next/script";
+export default async function CheckoutPage() {
+    const cart = await getCart();
+    const profile = await getProfile();
 
-export default function CheckoutPage() {
-    const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
-        name: "",
-        email: "",
-        phone: "",
-        address: "",
-    });
+    if (!cart || !cart.cart_items?.length) {
+        redirect("/cart");
+    }
 
-    const handleCheckout = async () => {
-        setLoading(true);
+    if (!profile) {
+        redirect("/auth/login");
+    }
 
-        // 1. Create order in our DB (omitted for brevity, assume we have an order ID)
-        const orderId = "temp_" + Math.random().toString(36).slice(2, 9);
-        const amount = 999; // Example amount
+    const subtotal = cart.cart_items.reduce((acc: number, item: any) => {
+        const price = item.product.discounted_price || item.product.price;
+        return acc + (price * item.quantity);
+    }, 0);
 
-        // 2. Create Razorpay Order
-        const res = await createRazorpayOrder(amount, orderId);
-
-        if (!res.success || !res.order) {
-            toast.error("Failed to initialize payment");
-            setLoading(false);
-            return;
-        }
-
-        const options = {
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-            amount: res.order.amount,
-            currency: "INR",
-            name: "STØRE",
-            description: "Purchase Payment",
-            order_id: res.order.id,
-            handler: function (response: any) {
-                toast.success("Payment Successful! Order Confirmed.");
-                // Redirect to success page
-            },
-            prefill: {
-                name: formData.name,
-                email: formData.email,
-                contact: formData.phone,
-            },
-            theme: {
-                color: "#000000",
-            },
-            modal: {
-                ondismiss: function () {
-                    setLoading(false);
-                }
-            }
-        };
-
-        const rzp = new (window as any).Razorpay(options);
-        rzp.open();
-    };
+    const razorpayKeyId = process.env.RAZORPAY_KEY_ID!;
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-12">
-            <Script src="https://checkout.razorpay.com/v1/checkout.js" />
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+            <Link href="/cart" className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-black transition-colors mb-8 group">
+                <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                BACK TO BAG
+            </Link>
 
-            <h1 className="text-3xl font-black mb-8 px-4 sm:px-0">CHECKOUT</h1>
+            <h1 className="text-4xl font-black italic tracking-tighter uppercase mb-12">CHECKOUT</h1>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                    <Card className="border-none shadow-sm bg-gray-50/50">
-                        <CardHeader>
-                            <CardTitle className="text-xl font-bold">Shipping Information</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">Full Name</Label>
-                                    <Input
-                                        id="name"
-                                        placeholder="Enter your name"
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">Email Address</Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        placeholder="you@example.com"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="phone">Phone Number</Label>
-                                    <Input
-                                        id="phone"
-                                        placeholder="+91 XXXXX XXXXX"
-                                        value={formData.phone}
-                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="address">Shipping Address</Label>
-                                    <Input
-                                        id="address"
-                                        placeholder="Enter full address"
-                                        value={formData.address}
-                                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                        </CardContent>
+            <div className="lg:grid lg:grid-cols-12 lg:items-start lg:gap-x-12">
+                <div className="lg:col-span-7 space-y-8">
+                    {/* Delivery Address Placeholder */}
+                    <Card className="p-8 rounded-3xl border-none shadow-sm bg-gray-50">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-lg font-black uppercase tracking-wider flex items-center gap-2">
+                                <MapPin className="w-5 h-5" />
+                                Delivery Address
+                            </h2>
+                        </div>
+                        <div className="space-y-2">
+                            <p className="font-bold text-gray-900">{profile.name}</p>
+                            <p className="text-sm font-medium text-gray-500">{profile.email}</p>
+                            <p className="text-sm font-medium text-gray-400 mt-4 italic">Address functionality coming soon. For now, we will use your profile info.</p>
+                        </div>
                     </Card>
+
+                    {/* Order Summary Mobile-like View */}
+                    <div className="block lg:hidden">
+                        {/* Summary code same as sidebar but for mobile */}
+                    </div>
                 </div>
 
-                <div>
-                    <Card className="sticky top-24 rounded-2xl border-2 border-black bg-white shadow-xl overflow-hidden">
-                        <CardHeader className="bg-black text-white py-6">
-                            <CardTitle className="text-xl font-bold">Order Summary</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-8 space-y-4">
-                            <div className="flex justify-between text-gray-500 font-medium">
-                                <span>Subtotal</span>
-                                <span>₹999.00</span>
-                            </div>
-                            <div className="flex justify-between text-gray-500 font-medium">
-                                <span>Shipping</span>
-                                <span className="text-green-600 font-bold uppercase text-xs">FREE</span>
-                            </div>
-                            <div className="border-t border-dashed pt-4 flex justify-between items-end">
-                                <span className="font-bold text-lg">Total</span>
-                                <span className="text-3xl font-black">₹999.00</span>
-                            </div>
+                <aside className="lg:col-span-5 mt-12 lg:mt-0">
+                    <Card className="p-8 rounded-3xl border-none shadow-sm bg-white border border-gray-100 sticky top-24">
+                        <h2 className="text-xl font-black italic tracking-tighter uppercase mb-8">IN YOUR BAG</h2>
 
-                            <Button
-                                onClick={handleCheckout}
-                                className="w-full mt-6 bg-black text-white hover:bg-gray-800 py-8 text-xl font-black rounded-xl transition-all active:scale-95 disabled:opacity-50"
-                                disabled={loading || !formData.email || !formData.address}
-                            >
-                                {loading ? "PROCESSING..." : "PLACE ORDER"}
-                            </Button>
-                            <p className="text-[10px] text-center text-gray-400 mt-4 leading-relaxed">
-                                By clicking "PLACE ORDER", you agree to our Terms of Service and Refund Policy.
-                            </p>
-                        </CardContent>
+                        <div className="space-y-6 mb-8 max-h-[400px] overflow-y-auto pr-2">
+                            {cart.cart_items.map((item: any) => (
+                                <div key={item.id} className="flex gap-4">
+                                    <div className="h-16 w-16 rounded-xl overflow-hidden bg-gray-50 border shrink-0">
+                                        <Image
+                                            src={item.product.image_url?.[0]?.url || "https://placehold.co/400x400"}
+                                            alt={item.product.name}
+                                            width={64}
+                                            height={64}
+                                            className="object-cover"
+                                        />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-bold uppercase truncate">{item.product.name}</p>
+                                        <p className="text-sm font-medium text-gray-500">Qty: {item.quantity}</p>
+                                    </div>
+                                    <p className="text-sm font-black">₹{(item.product.discounted_price || item.product.price) * item.quantity}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="space-y-4 pt-6 border-t border-gray-100">
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Subtotal</p>
+                                <p className="text-sm font-black text-gray-900">₹{subtotal}</p>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Delivery</p>
+                                <p className="text-sm font-black text-green-600">FREE</p>
+                            </div>
+                            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                                <p className="text-xl font-black italic tracking-tighter uppercase">Total</p>
+                                <p className="text-xl font-black text-gray-900">₹{subtotal}</p>
+                            </div>
+                        </div>
+
+                        <div className="mt-10">
+                            <CheckoutClient
+                                amount={subtotal}
+                                razorpayKeyId={razorpayKeyId}
+                                userEmail={profile.email}
+                                userName={profile.name || "Customer"}
+                            />
+                        </div>
                     </Card>
-                </div>
+                </aside>
             </div>
         </div>
     );

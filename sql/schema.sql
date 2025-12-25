@@ -191,38 +191,24 @@ alter table addresses enable row level security;
 
 -- Profiles: Users can read their own profile, admins can see all
 create policy "Users can view own profile" on profiles for select using (auth.uid() = id);
-create policy "Admins can view all profiles" on profiles for select using (
-  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-);
-create policy "Admins can update all profiles" on profiles for update using (
-  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-);
+create policy "Admins can view all profiles" on profiles for select using (is_admin());
+create policy "Admins can update all profiles" on profiles for update using (is_admin());
 
 -- Brands/Categories/Collections/Products: Public select, Admin all
 create policy "Public read brands" on brands for select using (true);
-create policy "Admin brand management" on brands for all using (
-  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-);
+create policy "Admin brand management" on brands for all using (is_admin());
 
 create policy "Public read categories" on categories for select using (true);
-create policy "Admin category management" on categories for all using (
-  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-);
+create policy "Admin category management" on categories for all using (is_admin());
 
 create policy "Public read collections" on collections for select using (true);
-create policy "Admin collection management" on collections for all using (
-  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-);
+create policy "Admin collection management" on collections for all using (is_admin());
 
 create policy "Public read active products" on products for select using (is_active = true);
-create policy "Admin product management" on products for all using (
-  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-);
+create policy "Admin product management" on products for all using (is_admin());
 
 create policy "Public read product images" on product_images for select using (true);
-create policy "Admin product images management" on product_images for all using (
-  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-);
+create policy "Admin product images management" on product_images for all using (is_admin());
 
 -- Carts: Users can manage their own cart
 create policy "Users can manage own cart" on carts for all using (auth.uid() = user_id);
@@ -232,14 +218,21 @@ create policy "Users can manage own cart items" on cart_items for all using (
 
 -- Orders: Users can read own orders, admins can read all
 create policy "Users can view own orders" on orders for select using (auth.uid() = user_id);
-create policy "Admins can view all orders" on orders for select using (
-  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-);
-create policy "Admins can update orders" on orders for update using (
-  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-);
+create policy "Admins can view all orders" on orders for select using (is_admin());
+create policy "Admins can update orders" on orders for update using (is_admin());
 
 -- Functions
+create or replace function public.is_admin()
+returns boolean as $$
+begin
+  return exists (
+    select 1 from profiles
+    where id = auth.uid()
+    and role = 'admin'
+  );
+end;
+$$ language plpgsql security definer;
+
 create or replace function handle_new_user()
 returns trigger as $$
 begin

@@ -2,14 +2,32 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+
+async function getOrSetSessionId() {
+    const cookieStore = await cookies();
+    let sessionId = cookieStore.get("cart_session_id")?.value;
+
+    if (!sessionId) {
+        sessionId = crypto.randomUUID();
+        cookieStore.set("cart_session_id", sessionId, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60 * 24 * 30 // 30 days
+        });
+    }
+
+    return sessionId;
+}
 
 export async function getCart() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    const sessionId = await getOrSetSessionId();
 
-    if (!user) return null;
-
-    const { data: cart } = await supabase
+    let query = supabase
         .from("carts")
         .select(`
             id,
@@ -22,19 +40,43 @@ export async function getCart() {
                     slug,
                     price,
                     discounted_price,
-                    image_url:product_images(url)
+                    product_images(url)
                 )
             )
-        `)
-        .eq("user_id", user.id)
-        .single();
+        `);
+
+    if (user) {
+        query = query.eq("user_id", user.id);
+    } else {
+        query = query.eq("session_id", sessionId).is("user_id", null);
+    }
+
+    const { data: cart } = await query.maybeSingle();
 
     if (!cart) {
         // Create cart if doesn't exist
+        const insertData = user
+            ? { user_id: user.id }
+            : { session_id: sessionId };
+
         const { data: newCart } = await supabase
             .from("carts")
-            .insert({ user_id: user.id })
-            .select()
+            .insert(insertData)
+            .select(`
+                id,
+                cart_items (
+                    id,
+                    quantity,
+                    product:products (
+                        id,
+                        name,
+                        slug,
+                        price,
+                        discounted_price,
+                        product_images(url)
+                    )
+                )
+            `)
             .single();
         return newCart;
     }
@@ -44,13 +86,8 @@ export async function getCart() {
 
 export async function addToCart(productId: string, quantity: number = 1) {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-        return { error: "Please log in to add items to cart" };
-    }
-
     let cart = await getCart();
+
     if (!cart) return { error: "Failed to initialize cart" };
 
     const { data: existingItem } = await supabase
@@ -58,7 +95,7 @@ export async function addToCart(productId: string, quantity: number = 1) {
         .select()
         .eq("cart_id", cart.id)
         .eq("product_id", productId)
-        .single();
+        .maybeSingle();
 
     if (existingItem) {
         const { error } = await supabase

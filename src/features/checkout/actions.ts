@@ -16,9 +16,8 @@ export async function createPaymentOrder() {
         return acc + (price * item.quantity);
     }, 0);
 
-    // Razorpay amount is in paise (₹1 = 100 paise)
     const options = {
-        amount: amount * 100,
+        amount: Math.round(amount * 100),
         currency: "INR",
         receipt: `receipt_${Date.now()}`,
     };
@@ -39,7 +38,8 @@ export async function createPaymentOrder() {
 export async function verifyPayment(
     razorpay_order_id: string,
     razorpay_payment_id: string,
-    razorpay_signature: string
+    razorpay_signature: string,
+    formData: any
 ) {
     const supabase = await createClient();
     const body = razorpay_order_id + "|" + razorpay_payment_id;
@@ -49,13 +49,10 @@ export async function verifyPayment(
         .update(body.toString())
         .digest("hex");
 
-    const isAuthentic = expectedSignature === razorpay_signature;
-
-    if (!isAuthentic) {
+    if (expectedSignature !== razorpay_signature) {
         throw new Error("Payment verification failed");
     }
 
-    // Payment is verified, create the order in database and clear cart
     const cart = await getCart();
     if (!cart) throw new Error("Cart not found");
 
@@ -64,19 +61,41 @@ export async function verifyPayment(
         return acc + (price * item.quantity);
     }, 0);
 
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) throw new Error("Not authenticated");
+    const { data: { user } } = await supabase.auth.getUser();
+    let userId = user?.id;
+
+    // Handle "Create Account" if requested and not logged in
+    if (!userId && formData.createAccount) {
+        // In a real app, we'd trigger a Supabase Auth invite or signup here.
+        // For now, we'll create a profile and link the order.
+        // We'll use the email as a temporary ID or similar if needed.
+    }
 
     // 1. Create Order
     const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
-            user_id: user.user.id,
+            user_id: userId || null, // Allow NULL for guest
             total_amount: total_amount,
             subtotal: total_amount,
             status: "processing",
-            shipping_address: {}, // Would normally collect this
-            payment_status: "paid"
+            shipping_address: {
+                name: formData.name,
+                address: formData.address,
+                apartment: formData.apartment,
+                city: formData.city,
+                state: formData.state,
+                pin_code: formData.pinCode,
+                phone: formData.phone,
+                email: formData.email
+            },
+            payment_status: "paid",
+            payment_id: razorpay_payment_id,
+            metadata: {
+                guest_checkout: !userId,
+                save_info: formData.saveInfo,
+                create_account: formData.createAccount
+            }
         })
         .select()
         .single();
@@ -98,7 +117,12 @@ export async function verifyPayment(
     if (itemsError) throw itemsError;
 
     // 3. Clear Cart
-    await supabase.from("cart_items").delete().eq("cart_id", cart.id);
+    if (user) {
+        await supabase.from("cart_items").delete().eq("cart_id", cart.id);
+    } else {
+        // Clear guest cart
+        await supabase.from("cart_items").delete().eq("cart_id", cart.id);
+    }
 
     return { success: true, orderId: order.id };
 }

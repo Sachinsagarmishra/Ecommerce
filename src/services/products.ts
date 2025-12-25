@@ -25,7 +25,7 @@ export async function getProductBySlug(slug: string) {
       category:categories(name)
     `)
         .eq("slug", slug)
-        .single();
+        .maybeSingle();
 
     if (error) throw error;
     return data;

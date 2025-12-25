@@ -96,7 +96,7 @@ create table coupons (
 -- CART
 create table carts (
   id uuid default uuid_generate_v4() primary key,
-  user_id uuid references auth.users on delete cascade,
+  user_id uuid references public.profiles(id) on delete cascade,
   session_id text, -- for guest checkout
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   unique(user_id)
@@ -117,7 +117,7 @@ create type order_status as enum ('pending', 'confirmed', 'shipped', 'delivered'
 
 create table orders (
   id uuid default uuid_generate_v4() primary key,
-  user_id uuid references auth.users on delete set null,
+  user_id uuid references public.profiles(id) on delete set null,
   status order_status default 'pending' not null,
   total_amount decimal(12,2) not null,
   subtotal decimal(12,2) not null,
@@ -158,7 +158,7 @@ create table payments (
 -- ADDRESSES
 create table addresses (
   id uuid default uuid_generate_v4() primary key,
-  user_id uuid references auth.users on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
   name text not null,
   phone text not null,
   address_line1 text not null,

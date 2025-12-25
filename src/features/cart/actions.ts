@@ -104,7 +104,7 @@ export async function addToCart(productId: string, quantity: number = 1) {
         const { error } = await supabase
             .from("cart_items")
             .insert({
-                cart_id: cart.id,
+                cart_id: cart!.id,
                 product_id: productId,
                 quantity
             });

@@ -28,7 +28,7 @@ export default function CheckoutPage() {
         // 2. Create Razorpay Order
         const res = await createRazorpayOrder(amount, orderId);
 
-        if (!res.success) {
+        if (!res.success || !res.order) {
             toast.error("Failed to initialize payment");
             setLoading(false);
             return;

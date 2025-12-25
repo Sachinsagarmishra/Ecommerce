@@ -9,7 +9,6 @@ import {
     LogOut,
     ChevronRight
 } from "lucide-react";
-import { signOut } from "@/features/auth/actions";
 
 export default async function CustomerDashboardLayout({
     children,

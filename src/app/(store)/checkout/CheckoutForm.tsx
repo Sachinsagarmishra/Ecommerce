@@ -22,8 +22,8 @@ const checkoutSchema = z.object({
     state: z.string().min(1, "Required"),
     pinCode: z.string().min(6, "Invalid PIN code"),
     phone: z.string().min(10, "Invalid phone number"),
-    saveInfo: z.boolean().default(false),
-    createAccount: z.boolean().default(false),
+    saveInfo: z.boolean(),
+    createAccount: z.boolean(),
 });
 
 type CheckoutValues = z.infer<typeof checkoutSchema>;
@@ -36,9 +36,18 @@ interface CheckoutFormProps {
 export function CheckoutForm({ subtotal, razorpayKeyId }: CheckoutFormProps) {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
-    const { register, handleSubmit, formState: { errors }, watch } = useForm<CheckoutValues>({
+    const { register, handleSubmit, formState: { errors } } = useForm<CheckoutValues>({
         resolver: zodResolver(checkoutSchema),
         defaultValues: {
+            email: "",
+            firstName: "",
+            lastName: "",
+            address: "",
+            apartment: "",
+            city: "",
+            state: "Delhi",
+            pinCode: "",
+            phone: "",
             saveInfo: false,
             createAccount: false,
         }

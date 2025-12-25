@@ -8,79 +8,56 @@ export async function signIn(formData: FormData) {
     const password = formData.get("password") as string;
     const supabase = await createClient();
 
-    if (password) {
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
-
-        if (error) {
-            return { error: error.message };
-        }
-
-        return redirect("/dashboard");
-    } else {
-        // Check if user exists and has password
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("has_password")
-            .eq("email", email)
-            .single();
-
-        if (profile?.has_password) {
-            return { showPassword: true };
-        } else {
-            // Send OTP
-            const { error } = await supabase.auth.signInWithOtp({
-                email,
-                options: {
-                    shouldCreateUser: true,
-                },
-            });
-
-            if (error) return { error: error.message };
-            return { showOTP: true };
-        }
-    }
-}
-
-export async function verifyOtp(email: string, token: string) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.verifyOtp({
+    const { error } = await supabase.auth.signInWithPassword({
         email,
-        token,
-        type: "magiclink",
-    });
-
-    if (error) return { error: error.message };
-
-    // Check if password setup is needed
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("has_password")
-        .eq("email", email)
-        .single();
-
-    if (!profile?.has_password) {
-        return redirect("/auth/setup-password");
-    }
-
-    return redirect("/dashboard");
-}
-
-export async function setupPassword(password: string) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.updateUser({
         password,
     });
 
-    if (error) return { error: error.message };
+    if (error) {
+        return { error: error.message };
+    }
 
-    // Update profile
-    await supabase
+    const { data: profile } = await supabase
         .from("profiles")
-        .update({ has_password: true })
-        .eq("id", (await supabase.auth.getUser()).data.user?.id);
+        .select("role")
+        .eq("email", email)
+        .single();
 
-    return redirect("/dashboard");
+    if (profile?.role === 'admin') {
+        redirect("/admin");
+    }
+
+    redirect("/dashboard");
+}
+
+export async function signUp(formData: FormData) {
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const name = formData.get("name") as string;
+    const supabase = await createClient();
+
+    const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+            data: {
+                name: name,
+            }
+        }
+    });
+
+    if (error) {
+        return { error: error.message };
+    }
+
+    // Note: The handle_new_user trigger in Supabase will automatically 
+    // create the profile entry. We just need to wait for confirmation if email confirmation is on.
+
+    return { success: true };
+}
+
+export async function signOut() {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+    redirect("/auth/login");
 }

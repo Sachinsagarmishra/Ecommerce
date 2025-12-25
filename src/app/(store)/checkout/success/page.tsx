@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, Package, MapPin, Truck } from "lucide-react";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 export default async function SuccessPage({ searchParams }: { searchParams: Promise<{ orderId: string }> }) {
     const { orderId } = await searchParams;

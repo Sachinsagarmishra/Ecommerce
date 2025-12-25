@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ interface CheckoutFormProps {
 export function CheckoutForm({ subtotal, razorpayKeyId }: CheckoutFormProps) {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
-    const { register, handleSubmit, formState: { errors } } = useForm<CheckoutValues>({
+    const { register, handleSubmit, formState: { errors }, control } = useForm<CheckoutValues>({
         resolver: zodResolver(checkoutSchema),
         defaultValues: {
             email: "",
@@ -178,14 +178,34 @@ export function CheckoutForm({ subtotal, razorpayKeyId }: CheckoutFormProps) {
                     </div>
 
                     <div className="flex items-center space-x-2 pt-2">
-                        <Checkbox id="saveInfo" {...register("saveInfo")} />
+                        <Controller
+                            name="saveInfo"
+                            control={control}
+                            render={({ field }) => (
+                                <Checkbox
+                                    id="saveInfo"
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                />
+                            )}
+                        />
                         <label htmlFor="saveInfo" className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Save this information for next time
                         </label>
                     </div>
 
                     <div className="flex items-center space-x-2">
-                        <Checkbox id="createAccount" {...register("createAccount")} />
+                        <Controller
+                            name="createAccount"
+                            control={control}
+                            render={({ field }) => (
+                                <Checkbox
+                                    id="createAccount"
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                />
+                            )}
+                        />
                         <label htmlFor="createAccount" className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Create account using this email
                         </label>

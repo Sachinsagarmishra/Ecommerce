@@ -6,14 +6,16 @@ import { ShoppingCart, Heart, ShieldCheck, Truck, RotateCcw } from "lucide-react
 import { Badge } from "@/components/ui/badge";
 import { AddToCart } from "./AddToCart";
 
-export default async function ProductDetailsPage({ params }: { params: { slug: string } }) {
-    const product = await getProductBySlug(params.slug);
+export default async function ProductDetailsPage({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params;
+    const product = await getProductBySlug(slug);
 
     if (!product) {
         notFound();
     }
 
     const hasDiscount = product.discounted_price && product.discounted_price < product.price;
+    const mainImage = product.product_images?.[0]?.url || "https://placehold.co/600x800";
 
     return (
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -21,19 +23,13 @@ export default async function ProductDetailsPage({ params }: { params: { slug: s
                 {/* Image Gallery */}
                 <div className="flex flex-col">
                     <div className="relative aspect-square overflow-hidden rounded-3xl bg-gray-100 shadow-lg">
-                        {product.image_url ? (
-                            <Image
-                                src={product.image_url}
-                                alt={product.name}
-                                fill
-                                className="object-cover"
-                                priority
-                            />
-                        ) : (
-                            <div className="flex h-full w-full items-center justify-center text-gray-400">
-                                No Image
-                            </div>
-                        )}
+                        <Image
+                            src={mainImage}
+                            alt={product.name}
+                            fill
+                            className="object-cover"
+                            priority
+                        />
                     </div>
                 </div>
 

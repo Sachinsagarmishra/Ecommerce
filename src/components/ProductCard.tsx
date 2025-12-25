@@ -12,7 +12,7 @@ interface ProductCardProps {
         slug: string;
         price: number;
         discounted_price?: number | null;
-        image_url?: string;
+        product_images?: { url: string }[];
         brand?: { name: string };
     };
 }
@@ -24,9 +24,9 @@ export function ProductCard({ product }: ProductCardProps) {
         <Card className="group overflow-hidden rounded-xl border-none shadow-sm transition-all hover:shadow-md bg-white">
             <Link href={`/products/${product.slug}`}>
                 <div className="relative aspect-square overflow-hidden bg-gray-100">
-                    {product.image_url ? (
+                    {product.product_images?.[0]?.url ? (
                         <Image
-                            src={product.image_url}
+                            src={product.product_images[0].url}
                             alt={product.name}
                             fill
                             className="object-cover transition-transform duration-300 group-hover:scale-105"

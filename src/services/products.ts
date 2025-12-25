@@ -7,7 +7,8 @@ export async function getProducts() {
         .select(`
       *,
       brand:brands(name),
-      category:categories(name)
+      category:categories(name),
+      product_images(url)
     `)
         .order("created_at", { ascending: false });
 
@@ -22,7 +23,8 @@ export async function getProductBySlug(slug: string) {
         .select(`
       *,
       brand:brands(name),
-      category:categories(name)
+      category:categories(name),
+      product_images(url)
     `)
         .eq("slug", slug)
         .maybeSingle();
